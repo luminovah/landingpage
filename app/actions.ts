@@ -1,48 +1,105 @@
 "use server"
 
+// Helper function for demo request
 export async function submitDemoRequest(prevState: any, formData: FormData) {
   const name = formData.get("name")
   const email = formData.get("email")
   const company = formData.get("company")
+  const message = formData.get("message")
 
-  // Basic server-side validation
+  // Server-side validation
   if (!name || !email || !company) {
     return { message: "Please fill out all required fields.", success: false }
   }
 
-  console.log("New Demo Request:")
-  console.log({
-    name,
-    email,
-    company,
-    message: formData.get("message"),
-  })
+  // --- START OF CHANGES ---
 
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  // 1. Get your Formspree endpoint URL from your Formspree dashboard.
+  // BEST PRACTICE: Store this in an environment variable.
+  const formspreeEndpoint = process.env.FORMSPREE_DEMO_ENDPOINT
 
-  // In a real application, you would integrate with your CRM or email service here.
-  // For example: await sendEmail(...) or await addToCRM(...)
+  if (!formspreeEndpoint) {
+    // This will help you debug if you forget to set the variable
+    return { 
+      message: "Server configuration error. Form endpoint is missing.", 
+      success: false 
+    }
+  }
 
-  return { message: "Request submitted successfully!", success: true }
+  try {
+    // 2. Send the data to Formspree
+    const response = await fetch(formspreeEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json", // Formspree recommends this
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        company,
+        message,
+      }),
+    })
+
+    // 3. Check if Formspree accepted the submission
+    if (response.ok) {
+      return { message: "Request submitted successfully!", success: true }
+    } else {
+      // If Formspree returned an error
+      return { message: "Form submission failed. Please try again.", success: false }
+    }
+  } catch (error) {
+    // 4. Catch any network or other errors
+    console.error("Error submitting to Formspree:", error)
+    return { message: "An error occurred. Please try again later.", success: false }
+  }
+  
+  // --- END OF CHANGES ---
 }
 
+// Helper function for early access request
 export async function submitEarlyAccessRequest(prevState: any, formData: FormData) {
   const email = formData.get("email") as string
 
-  // Basic email validation
   if (!email || !email.includes("@")) {
     return { message: "Please enter a valid email address.", success: false }
   }
+  
+  // --- APPLY SIMILAR CHANGES HERE ---
+  
+  // 1. Get your *other* Formspree endpoint URL (for the early access form)
+  const formspreeEndpoint = process.env.FORMSPREE_EARLY_ACCESS_ENDPOINT
 
-  console.log("New Early Access Request:")
-  console.log({ email })
+  if (!formspreeEndpoint) {
+    return { 
+      message: "Server configuration error. Form endpoint is missing.", 
+      success: false 
+    }
+  }
 
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  try {
+    // 2. Send the data to Formspree
+    const response = await fetch(formspreeEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+      }),
+    })
 
-  // In a real app, you'd add this email to a waitlist in your database or email service.
-  // e.g., await addToWaitlist(email);
-
-  return { message: "You're on the list! We'll be in touch.", success: true }
+    // 3. Check if Formspree accepted the submission
+    if (response.ok) {
+      return { message: "You're on the list! We'll be in touch.", success: true }
+    } else {
+      return { message: "Form submission failed. Please try again.", success: false }
+    }
+  } catch (error) {
+    // 4. Catch any network or other errors
+    console.error("Error submitting to Formspree:", error)
+    return { message: "An error occurred. Please try again later.", success: false }
+  }
 }
